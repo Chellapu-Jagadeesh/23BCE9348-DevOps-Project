@@ -34,7 +34,7 @@ git clone https://github.com/Chellapu-Jagadeesh/23BCE9348-DevOps-Project.git
 docker build -t tourism-website:v1 .
 docker run -d -p 8081:8081 --name tourism tourism-website:v1
 
-# Access at http://localhost:8081
+# Access at http://localhost:30081
 ```
 📁 Project Structure
 text
