@@ -16,7 +16,7 @@ pipeline {
             steps {
                 echo '📥 Pulling code from GitHub...'
                 git branch: 'main',
-                    url: 'https://github.com/Senthur-Devil007/taskmanager.git'
+                    url: 'https://github.com/Chellapu-Jagadeesh/23BCE9348-DevOps-Project.git'
                 echo '✅ Code pulled successfully'
             }
         }
