@@ -5,8 +5,8 @@ pipeline {
     tools {
         nodejs 'NodeJS-18'
     }
-
     environment {
+        KUBECONFIG = ""C:\Program Files\Jenkins\.kube\config""
         DOCKER_IMAGE = 'tourism-website'
         DOCKER_TAG = 'v2'
         K8S_NAMESPACE = 'default'
