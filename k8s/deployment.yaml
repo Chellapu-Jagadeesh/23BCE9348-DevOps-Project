@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tourism-website
+  labels:
+    app: tourism-website
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: tourism-website
+  template:
+    metadata:
+      labels:
+        app: tourism-website
+    spec:
+      containers:
+        - name: tourism-website
+          image: tourism-website:v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8081
+              name: http
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
