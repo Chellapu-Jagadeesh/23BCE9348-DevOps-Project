@@ -130,22 +130,20 @@ pipeline {
 
         stage('Smoke Test') {
             steps {
-                echo '🔥 Running smoke test...'
                 bat '''
-                    timeout /t 10 /nobreak
-
-                    curl http://localhost:30081/health
-
+                    echo Starting smoke test...
+                    powershell -Command "Start-Sleep -Seconds 10"
+                    start /b kubectl port-forward svc/tourism-website-service 8081:8081
+                    powershell -Command "Start-Sleep -Seconds 5"
+                    powershell -Command "Invoke-WebRequest -UseBasicParsing http://localhost:8081/health"
                     if errorlevel 1 (
-                        echo Smoke test failed.
+                        echo Smoke test failed
                         exit /b 1
                     )
-
-                    echo Smoke test passed.
+                    echo Smoke test passed
                 '''
             }
         }
-    }
 
     post {
 
