@@ -31,8 +31,8 @@ Monitoring Stack (Nagios + Graphite + Grafana)
 git clone https://github.com/Chellapu-Jagadeesh/23BCE9348-DevOps-Project.git
 
 # Run with Docker
-docker build -t tourism-website:v1 .
-docker run -d -p 8081:8081 --name tourism tourism-website:v1
+docker build -t tourism-website:v3 .
+docker run -d -p 30081:8081 --name tourism-container --network monitoring tourism-website:v3
 
 # Access at http://localhost:30081
 ```
