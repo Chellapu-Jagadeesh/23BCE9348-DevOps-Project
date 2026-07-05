@@ -1,3 +1,4 @@
+
 pipeline {
     agent any
 
@@ -12,6 +13,7 @@ pipeline {
     }
 
     stages {
+
         stage('Checkout Source Code') {
             steps {
                 echo '📥 Pulling code from GitHub...'
@@ -24,7 +26,7 @@ pipeline {
         stage('Verify Tools') {
             steps {
                 echo '🔍 Checking installed tools...'
-                sh '''
+                bat '''
                     node --version
                     npm --version
                     docker --version
@@ -35,23 +37,38 @@ pipeline {
 
         stage('Install Dependencies') {
             steps {
-                echo '📦 No npm dependencies for this static site'
-                echo '✅ Skipping npm install'
+                echo '📦 Installing dependencies...'
+                bat '''
+                    if exist package.json (
+                        npm install
+                    ) else (
+                        echo No package.json found. Skipping npm install.
+                    )
+                '''
             }
         }
 
         stage('Run Tests') {
             steps {
-                echo '🧪 Testing health endpoint structure...'
-                sh '''
-                    echo "Checking server.js exists..."
-                    test -f server.js && echo "✅ server.js found"
+                echo '🧪 Running basic checks...'
+                bat '''
+                    if not exist server.js (
+                        echo ERROR: server.js not found
+                        exit /b 1
+                    )
 
-                    echo "Checking health endpoint in server.js..."
-                    grep -q "/health" server.js && echo "✅ Health endpoint configured"
+                    if not exist index.html (
+                        echo ERROR: index.html not found
+                        exit /b 1
+                    )
 
-                    echo "Checking index.html exists..."
-                    test -f index.html && echo "✅ index.html found"
+                    findstr /C:"/health" server.js
+                    if errorlevel 1 (
+                        echo ERROR: Health endpoint not found
+                        exit /b 1
+                    )
+
+                    echo All basic checks passed.
                 '''
             }
         }
@@ -59,9 +76,12 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 echo '🐳 Building Docker image...'
-                sh '''
-                    docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
-                    echo "✅ Docker image built: ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                bat '''
+                    docker build -t %DOCKER_IMAGE%:%DOCKER_TAG% .
+
+                    if errorlevel 1 exit /b 1
+
+                    echo Docker image built successfully.
                 '''
             }
         }
@@ -69,26 +89,26 @@ pipeline {
         stage('Verify Docker Image') {
             steps {
                 echo '📋 Verifying Docker image...'
-                sh '''
-                    docker images | grep ${DOCKER_IMAGE}
+                bat '''
+                    docker images | findstr %DOCKER_IMAGE%
+
+                    if errorlevel 1 (
+                        echo Docker image not found
+                        exit /b 1
+                    )
                 '''
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
-                echo '☸️ Deploying to Kubernetes...'
-                sh '''
-                    # Update deployment with new image tag
-                    kubectl set image deployment/tourism-website \
-                        tourism-website=${DOCKER_IMAGE}:${DOCKER_TAG} \
-                        --namespace=${K8S_NAMESPACE} \
-                        || kubectl apply -f k8s/deployment.yaml
+                echo '☸️ Deploying application...'
+                bat '''
+                    kubectl apply -f k8s\\deployment.yaml
+                    if errorlevel 1 exit /b 1
 
-                    # Apply service
-                    kubectl apply -f k8s/service.yaml
-
-                    echo "✅ Kubernetes manifests applied"
+                    kubectl apply -f k8s\\service.yaml
+                    if errorlevel 1 exit /b 1
                 '''
             }
         }
@@ -96,16 +116,13 @@ pipeline {
         stage('Verify Kubernetes Deployment') {
             steps {
                 echo '🔍 Verifying deployment...'
-                sh '''
-                    echo "--- Deployment Status ---"
+                bat '''
                     kubectl rollout status deployment/tourism-website --timeout=60s
 
-                    echo ""
-                    echo "--- Pods ---"
-                    kubectl get pods -l app=tourism-website
+                    kubectl get deployments
 
-                    echo ""
-                    echo "--- Services ---"
+                    kubectl get pods
+
                     kubectl get svc tourism-website-service
                 '''
             }
@@ -113,45 +130,37 @@ pipeline {
 
         stage('Smoke Test') {
             steps {
-                echo '🔥 Running smoke tests...'
-                sh '''
-                    echo "Waiting 5 seconds for pods to stabilize..."
-                    sleep 5
+                echo '🔥 Running smoke test...'
+                bat '''
+                    timeout /t 10 /nobreak
 
-                    echo "Testing health endpoint via NodePort..."
-                    curl -s http://localhost:30081/health || echo "⚠️ NodePort test failed (expected if not on same host)"
+                    curl http://localhost:30081/health
 
-                    echo ""
-                    echo "Testing via port-forward..."
-                    kubectl port-forward deployment/tourism-website 8081:8081 &
-                    PORT_FORWARD_PID=$!
-                    sleep 3
-                    HEALTH_RESPONSE=$(curl -s http://localhost:8081/health)
-                    echo "Health Response: ${HEALTH_RESPONSE}"
+                    if errorlevel 1 (
+                        echo Smoke test failed.
+                        exit /b 1
+                    )
 
-                    if echo "${HEALTH_RESPONSE}" | grep -q "UP"; then
-                        echo "✅ Application is healthy!"
-                    else
-                        echo "❌ Health check failed"
-                        exit 1
-                    fi
-
-                    kill $PORT_FORWARD_PID 2>/dev/null || true
+                    echo Smoke test passed.
                 '''
             }
         }
     }
 
     post {
+
         always {
             echo '🏁 Pipeline finished.'
             cleanWs()
         }
+
         success {
-            echo '🎉 BUILD SUCCESSFUL — Application deployed to Kubernetes!'
+            echo '🎉 BUILD SUCCESSFUL — Application deployed successfully!'
         }
+
         failure {
-            echo '❌ BUILD FAILED — Check console output above for errors'
+            echo '❌ BUILD FAILED — Check the console output.'
         }
     }
 }
+
